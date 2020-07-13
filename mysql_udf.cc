@@ -2,6 +2,7 @@ extern "C"
 {
 #include <mysql/mysql.h>
 #include <string.h>
+#include <time.h>
 }
 #include <vector>
 #include <string>
@@ -123,7 +124,7 @@ my_bool common_str_count_map_init(UDF_INIT *initid, UDF_ARGS *args, char *messag
         strcpy(message, "Wrong arguments type");
         return true;
     }
-    std::unordered_map<std::string, long long> *data_map = new std::unordered_map<std::string, long long>;
+    auto data_map = new std::unordered_map<std::string, long long>;
     initid->ptr = (char *)data_map;
     initid->maybe_null = false;
     return false;
@@ -131,20 +132,20 @@ my_bool common_str_count_map_init(UDF_INIT *initid, UDF_ARGS *args, char *messag
 
 void common_str_count_map_deinit(UDF_INIT *initid)
 {
-    std::unordered_map<std::string, long long> *data_map = (std::unordered_map<std::string, long long> *)initid->ptr;
+    auto data_map = (std::unordered_map<std::string, long long> *)initid->ptr;
     data_map->clear();
     delete data_map;
 }
 
 void common_str_count_map_clear(UDF_INIT *initid)
 {
-    std::unordered_map<std::string, long long> *data_map = (std::unordered_map<std::string, long long> *)initid->ptr;
+    auto data_map = (std::unordered_map<std::string, long long> *)initid->ptr;
     data_map->clear();
 }
 
 void common_str_count_map_add(UDF_INIT *initid, UDF_ARGS *args, InputTypes input_type)
 {
-    std::unordered_map<std::string, long long> *data_map = (std::unordered_map<std::string, long long> *)initid->ptr;
+    auto data_map = (std::unordered_map<std::string, long long> *)initid->ptr;
     if (!args->args[0])
     {
         return;
@@ -332,4 +333,92 @@ extern "C" long long most_cnt_as_set(UDF_INIT *initid, UDF_ARGS *args,
     common_str_count_map(initid, args, &most_freq, &most_cnt, &items_total);
     *is_null = 0;
     return most_cnt;
+}
+
+extern "C" my_bool any_str_init(UDF_INIT *initid, UDF_ARGS *args, char *message)
+{
+    if (args->arg_count != 1 || args->arg_type[0] != STRING_RESULT)
+    {
+        strcpy(message, "Wrong arguments type for any_str");
+        return true;
+    }
+    initid->ptr = (char *)malloc(MAX_STR_LEN);
+    strcpy(initid->ptr, "");
+    initid->maybe_null = false;
+    return false;
+}
+
+extern "C" void any_str_deinit(UDF_INIT *initid)
+{
+    if (initid->ptr)
+    {
+        delete initid->ptr;
+    }
+}
+
+extern "C" void any_str_clear(UDF_INIT *initid,
+                              unsigned char *, unsigned char *)
+{
+    strcpy(initid->ptr, "");
+}
+
+extern "C" void any_str_add(UDF_INIT *initid, UDF_ARGS *args,
+                            unsigned char *, unsigned char *)
+{
+    if (args->args[0])
+    {
+        strcpy(initid->ptr, args->args[0]);
+    }
+}
+
+extern "C" const char *any_str(UDF_INIT *initid, UDF_ARGS *args,
+                               char *result, unsigned long *length, char *is_null, char *error)
+{
+    sprintf(result, initid->ptr);
+    *is_null = 0;
+    *length = strlen(result);
+    return result;
+}
+
+extern "C" my_bool is_weekend_init(UDF_INIT *initid, UDF_ARGS *args, char *message)
+{
+    if (args->arg_count != 1 || args->arg_type[0] != STRING_RESULT)
+    {
+        strcpy(message, "Wrong arguments type for is_weekend");
+        return true;
+    }
+    initid->maybe_null = false;
+    return false;
+}
+
+extern "C" void is_weekend_deinit(UDF_INIT *initid)
+{
+    // pass
+}
+
+extern "C" long long is_weekend(UDF_INIT *initid, UDF_ARGS *args,
+                                char *result, unsigned long *length, char *is_null, char *error)
+{
+    long long err = -1;
+    char *curptr;
+    if (!args->args[0])
+    {
+        return err;
+    }
+    struct tm t;
+    curptr = strptime(args->args[0], "%Y-%m-%d", &t);
+    if (curptr == NULL)
+        curptr = strptime(args->args[0], "%Y%m%d", &t);
+    if (curptr == NULL)
+        curptr = strptime(args->args[0], "%Y/%m/%d", &t);
+    if (curptr == NULL)
+        curptr = strptime(args->args[0], "%d/%m/%Y", &t);
+    if (curptr == NULL)
+        return -1;
+    if (t.tm_wday == 0 || t.tm_wday == 6)
+    {
+        return 1;
+    }
+    *is_null = 0;
+    return 0;
 }
