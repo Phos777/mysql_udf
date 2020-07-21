@@ -335,6 +335,41 @@ extern "C" long long most_cnt_as_set(UDF_INIT *initid, UDF_ARGS *args,
     return most_cnt;
 }
 
+extern "C" my_bool unique_cnt_init(UDF_INIT *initid, UDF_ARGS *args, char *message)
+{
+    return common_str_count_map_init(initid, args, message);
+}
+
+extern "C" void unique_cnt_deinit(UDF_INIT *initid)
+{
+    common_str_count_map_deinit(initid);
+}
+
+extern "C" void unique_cnt_clear(UDF_INIT *initid,
+                                 unsigned char *, unsigned char *)
+{
+    common_str_count_map_clear(initid);
+}
+
+extern "C" void unique_cnt_add(UDF_INIT *initid, UDF_ARGS *args,
+                               unsigned char *, unsigned char *)
+{
+    common_str_count_map_add(initid, args, LIST_AS_STR);
+}
+
+extern "C" long long unique_cnt(UDF_INIT *initid, UDF_ARGS *args,
+                                char *result, unsigned long *length, char *is_null, char *error)
+{
+    auto *data_map = (std::unordered_map<std::string, long long> *)initid->ptr;
+    long long unique_cnt = 0;
+    for (auto it = data_map->begin(); it != data_map->end(); it++)
+    {
+        unique_cnt += 1;
+    }
+    *is_null = 0;
+    return unique_cnt;
+}
+
 extern "C" my_bool any_str_init(UDF_INIT *initid, UDF_ARGS *args, char *message)
 {
     if (args->arg_count != 1 || args->arg_type[0] != STRING_RESULT)
